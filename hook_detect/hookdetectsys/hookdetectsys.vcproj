@@ -18,17 +18,17 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="release"
+			OutputDirectory="debug"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="0"
 			>
 			<Tool
 				Name="VCNMakeTool"
-				BuildCommandLine="ddkbuild -WNETXP free ."
-				ReBuildCommandLine="ddkbuild -WNETXP free . -cZ"
-				CleanCommandLine="ddkbuild -WNETXP free . -c0"
+				BuildCommandLine="ddkbuild -WNETXP checked ."
+				ReBuildCommandLine="ddkbuild -WNETXP checked . -cZ"
+				CleanCommandLine="ddkbuild -WNETXP checked . -c0"
 				Output=""
-				PreprocessorDefinitions="WIN32;NDEBUG;_X86_"
+				PreprocessorDefinitions="WIN32;_DEBUG;_X86_"
 				IncludeSearchPath="C:\utils\WINDDK\3790.1830\inc\ddk\wxp"
 				ForcedIncludes=""
 				AssemblySearchPath=""
