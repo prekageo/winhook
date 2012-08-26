@@ -14,6 +14,7 @@ typedef struct _DEVICE_EXTENSION {
 } DEVICE_EXTENSION, *PDEVICE_EXTENSION;
 
 PDEVICE_OBJECT g_pDeviceObject;
+int g_win7;
 
 NTSTATUS DriverEntry(IN PDRIVER_OBJECT DriverObject, IN PUNICODE_STRING RegistryPath) {
     NTSTATUS                  ntStatus;
@@ -23,6 +24,7 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT DriverObject, IN PUNICODE_STRING Registry
     PDEVICE_OBJECT            pDeviceObject;
     PDEVICE_EXTENSION         extension;
     HANDLE                    hProcessHandle;
+    RTL_OSVERSIONINFOW version;
 
     RtlInitUnicodeString(&uszDriverString, L"\\Device\\hookdetect");
     ntStatus = IoCreateDevice(DriverObject,sizeof(DEVICE_EXTENSION),&uszDriverString,FILE_DEVICE_UNKNOWN,0,FALSE,&pDeviceObject);
@@ -41,6 +43,15 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT DriverObject, IN PUNICODE_STRING Registry
     DriverObject->MajorFunction[IRP_MJ_CREATE]         = DispatchCreateClose;
     DriverObject->MajorFunction[IRP_MJ_CLOSE]          = DispatchCreateClose;
     DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DispatchIoctl;
+
+    version.dwOSVersionInfoSize = sizeof(version);
+    RtlGetVersion(&version);
+    if (((version.dwMajorVersion << 8) | version.dwMinorVersion) >= 0x0601) {
+        g_win7 = 1;
+    } else {
+        g_win7 = 0;
+    }
+
     return ntStatus;
 }
 
@@ -91,7 +102,11 @@ void retrieve_hooks(PHOOK *aphkStart, PPROCESSINFO ppi, hook *hook) {
                 hook[i].handler[j].internal_stuff.thread_id = phook->thread_id;
 
                 if (phook->hmod_table_index >= 0) {
-                    hook[i].handler[j].module_base = (DWORD)ppi->ahmodLibLoaded[phook->hmod_table_index];
+                    if (g_win7) {
+                        hook[i].handler[j].module_base = ((DWORD*)ppi)[0xC0/4+phook->hmod_table_index];
+                    } else {
+                        hook[i].handler[j].module_base = (DWORD)ppi->ahmodLibLoaded[phook->hmod_table_index];
+                    }
                 }
                 phook = phook->next_address;
             }
@@ -113,6 +128,7 @@ NTSTATUS DispatchIoctl(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp){
                 PPROCESSINFO ppi;
                 PARAMS_GET_HOOKS *params;
                 DATA_GET_HOOKS *data;
+                PHOOK* aphkStart;
 
                 if (irpStack->Parameters.DeviceIoControl.OutputBufferLength < sizeof(DATA_GET_HOOKS)) {
                     ntStatus = STATUS_BUFFER_TOO_SMALL;
@@ -132,13 +148,20 @@ NTSTATUS DispatchIoctl(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp){
 
                 pethread = PsGetCurrentThread();
                 ptiCurrent = PsGetThreadWin32Thread(pethread);
-                pdesktopinfo = ptiCurrent->pDeskInfo;
-                ppi = ptiCurrent->ppi;
+                if (g_win7) {
+                    pdesktopinfo = (PDESKTOPINFO)((unsigned int*)ptiCurrent)[0xCC/4];
+                    ppi = (PPROCESSINFO)&((char*)ptiCurrent)[0xB8];
+                    aphkStart = (PHOOK*)&((char*)pdesktopinfo)[0x10];
+                } else {
+                    pdesktopinfo = ptiCurrent->pDeskInfo;
+                    ppi = ptiCurrent->ppi;
+                    aphkStart = pdesktopinfo->aphkStart;
+                }
 
                 data = (DATA_GET_HOOKS*)Irp->AssociatedIrp.SystemBuffer;
                 memset(data, 0, sizeof(DATA_GET_HOOKS));
 
-                retrieve_hooks(pdesktopinfo->aphkStart, ptiCurrent->ppi, data->global_hook);
+                retrieve_hooks(aphkStart, ppi, data->global_hook);
 
                 data->threads=0;
                 j=0;
@@ -146,12 +169,25 @@ NTSTATUS DispatchIoctl(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp){
                     if (PsLookupThreadByThreadId((HANDLE)params->thread_id[i], &pethread) != STATUS_SUCCESS) {
                         continue;
                     }
+                    if (g_win7) {
+                        if (PsGetThreadSessionId(pethread) != PsGetCurrentProcessSessionId()) {
+                            ObDereferenceObject(pethread);
+                            continue;
+                        }
+                    }
                     ptiCurrent = PsGetThreadWin32Thread(pethread);
                     if (ptiCurrent) {
-                        if (has_hooks((PHOOK*)&((char*)ptiCurrent)[0xf4])) {
+                        if (g_win7) {
+                            aphkStart = (PHOOK*)&((char*)ptiCurrent)[0x198];
+                            ppi = (PPROCESSINFO)&((char*)ptiCurrent)[0xB8];
+                        } else {
+                            aphkStart = (PHOOK*)&((char*)ptiCurrent)[0xf4];
+                            ppi = ptiCurrent->ppi;
+                        }
+                        if (has_hooks(aphkStart)) {
                             data->threads++;
                             if (j<MAX_OUT_THREADS) {
-                                retrieve_hooks(ptiCurrent->aphkStart, ptiCurrent->ppi, data->thread[j].hook);
+                                retrieve_hooks(aphkStart, ppi, data->thread[j].hook);
                                 data->thread[j].thread_id = params->thread_id[i];
                                 j++;
                             }

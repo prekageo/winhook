@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <dbghelp.h>
 #include <tlhelp32.h>
+#include <psapi.h>
 
 #include "common.h"
 
@@ -181,6 +182,32 @@ int symbols_init() {
         }
     }
 
+    LPVOID imageBaseWin32k = NULL;
+    DWORD needed;
+    EnumDeviceDrivers(NULL, 0, &needed);
+    LPVOID *imageBases = new LPVOID[needed/sizeof(LPVOID)];
+    if (!EnumDeviceDrivers(imageBases, sizeof(LPVOID)*needed, &needed)) {
+        delete[] imageBases;
+        ErrorExit(L"EnumDeviceDrivers");
+        goto error;
+    }
+    wchar_t baseName[32];
+    for (unsigned int i=0;i<needed;i++) {
+        if (!GetDeviceDriverBaseName(imageBases[i], baseName, sizeof(baseName))) {
+            continue;
+        }
+        if (!wcscmp(baseName, L"win32k.sys")) {
+            imageBaseWin32k = imageBases[i];
+            break;
+        }
+    }
+    delete[] imageBases;
+
+    if (imageBaseWin32k == NULL) {
+        printf("Image base address of win32k.sys not found.\n");
+        goto error;
+    }
+
     wchar_t path[MAX_PATH];
     if (!GetSystemDirectory(path, MAX_PATH)) {
         ErrorExit(L"GetSystemDirectory");
@@ -189,7 +216,7 @@ int symbols_init() {
 
     wcscat_s(path, MAX_PATH, L"\\win32k.sys");
 
-    if (!(*SymLoadModuleExW_d)(hprocess, NULL, path, NULL, 0, 0, NULL, 0)) {
+    if (!(*SymLoadModuleExW_d)(hprocess, NULL, path, NULL, (DWORD64)imageBaseWin32k, 0, NULL, 0)) {
         ErrorExit(L"SymLoadModuleEx");
         goto error;
     }
