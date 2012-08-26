@@ -1,0 +1,10 @@
+*.sdf
+*.suo
+*.user
+[Dd]ebug*/
+[Rr]elease*/
+hook_detect/hookdetectsys/buildchk_wxp_x86.log
+hook_detect/hookdetectsys/buildfre_wxp_x86.log
+hook_detect/hookdetectsys/objchk_wxp_x86
+hook_detect/hookdetectsys/objfre_wxp_x86
+ipch/
