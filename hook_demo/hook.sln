@@ -1,9 +1,12 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hook", "hook\hook.vcproj", "{08227CC3-B9B0-4D77-A058-98D074F8BF4D}"
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hook", "hook\hook.vcxproj", "{08227CC3-B9B0-4D77-A058-98D074F8BF4D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AD318B4E-2583-42B9-A3FB-E456C2926003} = {AD318B4E-2583-42B9-A3FB-E456C2926003}
+	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hookdll", "hookdll\hookdll.vcproj", "{AD318B4E-2583-42B9-A3FB-E456C2926003}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hookdll", "hookdll\hookdll.vcxproj", "{AD318B4E-2583-42B9-A3FB-E456C2926003}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
