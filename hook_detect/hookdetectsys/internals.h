@@ -29,17 +29,17 @@ typedef int MLIST;
 typedef struct tagHOOK* PHOOK;
 
 typedef struct tagHOOK {
-	DWORD unknown_0;
-	DWORD unknown_4;
-	DWORD unknown_8;
-	DWORD unknown_C;
-	PHOOK self_address;
-	PHOOK next_address;
-	DWORD hook_type;
-	DWORD proc_relative_offset;
-	DWORD flags;
-	int hmod_table_index;
-	DWORD thread_id;
+    DWORD unknown_0;
+    DWORD unknown_4;
+    DWORD unknown_8;
+    DWORD unknown_C;
+    PHOOK self_address;
+    PHOOK next_address;
+    DWORD hook_type;
+    DWORD proc_relative_offset;
+    DWORD flags;
+    int hmod_table_index;
+    DWORD thread_id;
 } HOOK;
 
 typedef struct _THREADINFO *PTHREADINFO;

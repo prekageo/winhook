@@ -22,7 +22,7 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT DriverObject, IN PUNICODE_STRING Registry
     UNICODE_STRING            uszProcessEventString;
     PDEVICE_OBJECT            pDeviceObject;
     PDEVICE_EXTENSION         extension;
-	HANDLE                    hProcessHandle;
+    HANDLE                    hProcessHandle;
 
     RtlInitUnicodeString(&uszDriverString, L"\\Device\\hookdetect");
     ntStatus = IoCreateDevice(DriverObject,sizeof(DEVICE_EXTENSION),&uszDriverString,FILE_DEVICE_UNKNOWN,0,FALSE,&pDeviceObject);
@@ -55,48 +55,48 @@ UserGetAtomName_ptr UserGetAtomName;
 ATOM *aatomSysLoaded;
 
 int has_hooks(PHOOK *aphkStart) {
-	unsigned int i;
+    unsigned int i;
 
-	for (i=0;i<NB_HOOKS;i++) {
-		if (aphkStart[i]) {
-			return 1;
-		}
-	}
-	return 0;
+    for (i=0;i<NB_HOOKS;i++) {
+        if (aphkStart[i]) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 void retrieve_hooks(PHOOK *aphkStart, PPROCESSINFO ppi, hook *hook) {
-	unsigned int i, j;
-	PHOOK phook, phook_next;
+    unsigned int i, j;
+    PHOOK phook, phook_next;
 
-	for (i=0;i<NB_HOOKS;i++) {
-		phook = aphkStart[i];
-		hook[i].handlers = 0;
-		if (phook) {
-			phook_next = phook;
-			do {
-				hook[i].handlers++;
-			} while (phook_next = phook_next->next_address);
-			for(j=0;j<min(MAX_HANDLERS, hook[i].handlers);j++) {
-				hook[i].handler[j].internal_stuff.unknown_0 = phook->unknown_0;
-				hook[i].handler[j].internal_stuff.unknown_4 = phook->unknown_4;
-				hook[i].handler[j].internal_stuff.unknown_8 = phook->unknown_8;
-				hook[i].handler[j].internal_stuff.unknown_C = phook->unknown_C;
-				hook[i].handler[j].internal_stuff.self_address = (DWORD)phook->self_address;
-				hook[i].handler[j].internal_stuff.next_address = (DWORD)phook->next_address;
-				hook[i].handler[j].internal_stuff.hook_type = phook->hook_type;
-				hook[i].handler[j].proc_relative_offset = phook->proc_relative_offset;
-				hook[i].handler[j].internal_stuff.flags = phook->flags;
-				hook[i].handler[j].hmod_table_index = phook->hmod_table_index;
-				hook[i].handler[j].internal_stuff.thread_id = phook->thread_id;
+    for (i=0;i<NB_HOOKS;i++) {
+        phook = aphkStart[i];
+        hook[i].handlers = 0;
+        if (phook) {
+            phook_next = phook;
+            do {
+                hook[i].handlers++;
+            } while (phook_next = phook_next->next_address);
+            for(j=0;j<min(MAX_HANDLERS, hook[i].handlers);j++) {
+                hook[i].handler[j].internal_stuff.unknown_0 = phook->unknown_0;
+                hook[i].handler[j].internal_stuff.unknown_4 = phook->unknown_4;
+                hook[i].handler[j].internal_stuff.unknown_8 = phook->unknown_8;
+                hook[i].handler[j].internal_stuff.unknown_C = phook->unknown_C;
+                hook[i].handler[j].internal_stuff.self_address = (DWORD)phook->self_address;
+                hook[i].handler[j].internal_stuff.next_address = (DWORD)phook->next_address;
+                hook[i].handler[j].internal_stuff.hook_type = phook->hook_type;
+                hook[i].handler[j].proc_relative_offset = phook->proc_relative_offset;
+                hook[i].handler[j].internal_stuff.flags = phook->flags;
+                hook[i].handler[j].hmod_table_index = phook->hmod_table_index;
+                hook[i].handler[j].internal_stuff.thread_id = phook->thread_id;
 
-				if (phook->hmod_table_index >= 0) {
-					hook[i].handler[j].module_base = (DWORD)ppi->ahmodLibLoaded[phook->hmod_table_index];
-				}
-				phook = phook->next_address;
-			}
-		}
-	}
+                if (phook->hmod_table_index >= 0) {
+                    hook[i].handler[j].module_base = (DWORD)ppi->ahmodLibLoaded[phook->hmod_table_index];
+                }
+                phook = phook->next_address;
+            }
+        }
+    }
 }
 
 NTSTATUS DispatchIoctl(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp){
@@ -105,107 +105,107 @@ NTSTATUS DispatchIoctl(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp){
     PDEVICE_EXTENSION extension = DeviceObject->DeviceExtension;
     switch(irpStack->Parameters.DeviceIoControl.IoControlCode){
         case IOCTL_GET_HOOKS:
-			{
-				unsigned int i,j;
-				PETHREAD pethread;
-				PTHREADINFO ptiCurrent;
-				PDESKTOPINFO pdesktopinfo;
-				PPROCESSINFO ppi;
-				PARAMS_GET_HOOKS *params;
-				DATA_GET_HOOKS *data;
+            {
+                unsigned int i,j;
+                PETHREAD pethread;
+                PTHREADINFO ptiCurrent;
+                PDESKTOPINFO pdesktopinfo;
+                PPROCESSINFO ppi;
+                PARAMS_GET_HOOKS *params;
+                DATA_GET_HOOKS *data;
 
-				if (irpStack->Parameters.DeviceIoControl.OutputBufferLength < sizeof(DATA_GET_HOOKS)) {
-					ntStatus = STATUS_BUFFER_TOO_SMALL;
-					break;
-				}
-				if (irpStack->Parameters.DeviceIoControl.InputBufferLength < sizeof(PARAMS_GET_HOOKS)) {
-					ntStatus = STATUS_BUFFER_TOO_SMALL;
-					break;
-				}
+                if (irpStack->Parameters.DeviceIoControl.OutputBufferLength < sizeof(DATA_GET_HOOKS)) {
+                    ntStatus = STATUS_BUFFER_TOO_SMALL;
+                    break;
+                }
+                if (irpStack->Parameters.DeviceIoControl.InputBufferLength < sizeof(PARAMS_GET_HOOKS)) {
+                    ntStatus = STATUS_BUFFER_TOO_SMALL;
+                    break;
+                }
 
-			    params = ExAllocatePoolWithTag(PagedPool, sizeof(PARAMS_GET_HOOKS), 'tdkh');
-				if (!params) {
-					break;
-				}
+                params = ExAllocatePoolWithTag(PagedPool, sizeof(PARAMS_GET_HOOKS), 'tdkh');
+                if (!params) {
+                    break;
+                }
 
-				memcpy(params, Irp->AssociatedIrp.SystemBuffer, sizeof(PARAMS_GET_HOOKS));
+                memcpy(params, Irp->AssociatedIrp.SystemBuffer, sizeof(PARAMS_GET_HOOKS));
 
-				pethread = PsGetCurrentThread();
-				ptiCurrent = PsGetThreadWin32Thread(pethread);
-				pdesktopinfo = ptiCurrent->pDeskInfo;
-				ppi = ptiCurrent->ppi;
+                pethread = PsGetCurrentThread();
+                ptiCurrent = PsGetThreadWin32Thread(pethread);
+                pdesktopinfo = ptiCurrent->pDeskInfo;
+                ppi = ptiCurrent->ppi;
 
-				data = (DATA_GET_HOOKS*)Irp->AssociatedIrp.SystemBuffer;
-				memset(data, 0, sizeof(DATA_GET_HOOKS));
+                data = (DATA_GET_HOOKS*)Irp->AssociatedIrp.SystemBuffer;
+                memset(data, 0, sizeof(DATA_GET_HOOKS));
 
-				retrieve_hooks(pdesktopinfo->aphkStart, ptiCurrent->ppi, data->global_hook);
+                retrieve_hooks(pdesktopinfo->aphkStart, ptiCurrent->ppi, data->global_hook);
 
-				data->threads=0;
-				j=0;
-				for (i=0;i<params->threads;i++) {
-					if (PsLookupThreadByThreadId((HANDLE)params->thread_id[i], &pethread) != STATUS_SUCCESS) {
-						continue;
-					}
-					ptiCurrent = PsGetThreadWin32Thread(pethread);
-					if (ptiCurrent) {
-						if (has_hooks((PHOOK*)&((char*)ptiCurrent)[0xf4])) {
-							data->threads++;
-							if (j<MAX_OUT_THREADS) {
-								retrieve_hooks(ptiCurrent->aphkStart, ptiCurrent->ppi, data->thread[j].hook);
-								data->thread[j].thread_id = params->thread_id[i];
-								j++;
-							}
-						}
-					}
-					ObDereferenceObject(pethread);
-				}
+                data->threads=0;
+                j=0;
+                for (i=0;i<params->threads;i++) {
+                    if (PsLookupThreadByThreadId((HANDLE)params->thread_id[i], &pethread) != STATUS_SUCCESS) {
+                        continue;
+                    }
+                    ptiCurrent = PsGetThreadWin32Thread(pethread);
+                    if (ptiCurrent) {
+                        if (has_hooks((PHOOK*)&((char*)ptiCurrent)[0xf4])) {
+                            data->threads++;
+                            if (j<MAX_OUT_THREADS) {
+                                retrieve_hooks(ptiCurrent->aphkStart, ptiCurrent->ppi, data->thread[j].hook);
+                                data->thread[j].thread_id = params->thread_id[i];
+                                j++;
+                            }
+                        }
+                    }
+                    ObDereferenceObject(pethread);
+                }
 
-				ExFreePool(params);
+                ExFreePool(params);
 
-				ntStatus = STATUS_SUCCESS;
-				break;
-			}
-		case IOCTL_HMOD_TBL_INX_TO_MOD_NAME:
-			{
-				DATA_HMOD_TBL_INX_TO_MOD_NAME *data;
-				PARAMS_HMOD_TBL_INX_TO_MOD_NAME *params;
-				WCHAR tmp;
-				int hmod_table_index;
+                ntStatus = STATUS_SUCCESS;
+                break;
+            }
+        case IOCTL_HMOD_TBL_INX_TO_MOD_NAME:
+            {
+                DATA_HMOD_TBL_INX_TO_MOD_NAME *data;
+                PARAMS_HMOD_TBL_INX_TO_MOD_NAME *params;
+                WCHAR tmp;
+                int hmod_table_index;
 
-				if (irpStack->Parameters.DeviceIoControl.OutputBufferLength < sizeof(DATA_HMOD_TBL_INX_TO_MOD_NAME)) {
-					ntStatus = STATUS_BUFFER_TOO_SMALL;
-					break;
-				}
-				if (irpStack->Parameters.DeviceIoControl.InputBufferLength < sizeof(PARAMS_HMOD_TBL_INX_TO_MOD_NAME)) {
-					ntStatus = STATUS_BUFFER_TOO_SMALL;
-					break;
-				}
+                if (irpStack->Parameters.DeviceIoControl.OutputBufferLength < sizeof(DATA_HMOD_TBL_INX_TO_MOD_NAME)) {
+                    ntStatus = STATUS_BUFFER_TOO_SMALL;
+                    break;
+                }
+                if (irpStack->Parameters.DeviceIoControl.InputBufferLength < sizeof(PARAMS_HMOD_TBL_INX_TO_MOD_NAME)) {
+                    ntStatus = STATUS_BUFFER_TOO_SMALL;
+                    break;
+                }
 
-				params = Irp->AssociatedIrp.SystemBuffer;
+                params = Irp->AssociatedIrp.SystemBuffer;
 
-				UserGetAtomName = (UserGetAtomName_ptr)params->UserGetAtomName_address;
-				aatomSysLoaded = (ATOM*)params->aatomSysLoaded_address;
-				hmod_table_index = params->hmod_table_index;
+                UserGetAtomName = (UserGetAtomName_ptr)params->UserGetAtomName_address;
+                aatomSysLoaded = (ATOM*)params->aatomSysLoaded_address;
+                hmod_table_index = params->hmod_table_index;
 
-				if (UserGetAtomName && aatomSysLoaded) {
-					__try {
-						(*UserGetAtomName)(aatomSysLoaded[0], &tmp, 1);
-					} __except (EXCEPTION_EXECUTE_HANDLER) {
-						UserGetAtomName = 0;
-					}
-				}
+                if (UserGetAtomName && aatomSysLoaded) {
+                    __try {
+                        (*UserGetAtomName)(aatomSysLoaded[0], &tmp, 1);
+                    } __except (EXCEPTION_EXECUTE_HANDLER) {
+                        UserGetAtomName = 0;
+                    }
+                }
 
-				data = Irp->AssociatedIrp.SystemBuffer;
+                data = Irp->AssociatedIrp.SystemBuffer;
 
-				if (UserGetAtomName) {
-					(*UserGetAtomName)(aatomSysLoaded[hmod_table_index], data->module_name, MAX_PATH);
-				} else {
-					data->module_name[0] = 0;
-				}
+                if (UserGetAtomName) {
+                    (*UserGetAtomName)(aatomSysLoaded[hmod_table_index], data->module_name, MAX_PATH);
+                } else {
+                    data->module_name[0] = 0;
+                }
 
-				ntStatus = STATUS_SUCCESS;
-				break;
-			}
+                ntStatus = STATUS_SUCCESS;
+                break;
+            }
     }
 
     Irp->IoStatus.Status = ntStatus;
@@ -220,8 +220,8 @@ NTSTATUS DispatchIoctl(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp){
 
 void UnloadDriver(IN PDRIVER_OBJECT DriverObject){
     UNICODE_STRING  uszDeviceString;
-	NTSTATUS        ntStatus = STATUS_DEVICE_CONFIGURATION_ERROR;
-	IoDeleteDevice(DriverObject->DeviceObject);
-	RtlInitUnicodeString(&uszDeviceString, L"\\DosDevices\\hookdetect");
-	IoDeleteSymbolicLink(&uszDeviceString);
+    NTSTATUS        ntStatus = STATUS_DEVICE_CONFIGURATION_ERROR;
+    IoDeleteDevice(DriverObject->DeviceObject);
+    RtlInitUnicodeString(&uszDeviceString, L"\\DosDevices\\hookdetect");
+    IoDeleteSymbolicLink(&uszDeviceString);
 }
